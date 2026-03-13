@@ -1,0 +1,22 @@
+{
+  "name": "risgame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "start": "node index.js"
+},
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matwindu/Risgame.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Matwindu/Risgame/issues"
+  },
+  "homepage": "https://github.com/Matwindu/Risgame#readme"
+}
