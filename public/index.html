@@ -1,160 +1,423 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚔️ STRATEGOS — Jeu de conquête mondiale</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
-    <style>
-        /* ... (Garder tout ton CSS d'origine ici pour ne pas casser le design) ... */
-        :root { --bg: #0d0d12; --surface: #13131e; --gold: #c9a84c; --text: #d4c5a9; --border: #2a2a4a; }
-        body { font-family: 'Crimson Pro', serif; background: var(--bg); color: var(--text); height: 100vh; margin: 0; }
-        #lobby, #waiting { display: flex; align-items: center; justify-content: center; height: 100vh; background: radial-gradient(ellipse at center, #1a1a3e 0%, #0d0d12 70%); }
-        .lobby-card, .waiting-card { background: var(--surface); border: 1px solid var(--border); padding: 40px; border-radius: 12px; text-align: center; width: 440px; }
-        .btn { padding: 12px 28px; background: var(--gold); color: #000; border: none; border-radius: 6px; cursor: pointer; font-family: 'Cinzel'; width: 100%; margin-top: 10px; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; background: #000; border: 1px solid var(--border); color: #fff; }
-        #playerList { list-style: none; padding: 0; margin: 20px 0; }
-        #playerList li { background: #1a1a2e; margin: 5px 0; padding: 10px; border-radius: 5px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ STRATEGOS — Jeu de conquête mondiale</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d12;
+    --surface: #13131e;
+    --surface2: #1a1a2e;
+    --border: #2a2a4a;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --red: #c0392b;
+    --text: #d4c5a9;
+    --text-dim: #6e6a5e;
+    --shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Crimson Pro', serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- LOBBY & WAITING --- */
+  #lobby, #waiting {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, #1a1a3e 0%, #0d0d12 70%);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 40px; border-radius: 12px;
+    width: 440px; text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .btn {
+    display: inline-block; width: 100%;
+    padding: 12px 28px; background: var(--gold); color: #000;
+    text-transform: uppercase; font-family: 'Cinzel'; font-weight: 900;
+    border: none; border-radius: 6px; cursor: pointer; transition: 0.3s;
+    margin-top: 15px;
+  }
+  .btn:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.3; filter: grayscale(1); cursor: not-allowed; }
+
+  /* --- GAME LAYOUT --- */
+  #game { display: none; height: 100vh; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr; }
+  header { grid-column: 1 / -1; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+  aside { background: var(--surface); border-right: 1px solid var(--border); padding: 15px; overflow-y: auto; }
+  #mapContainer { position: relative; background: #080810; overflow: hidden; cursor: grab; }
+  #mapContainer:active { cursor: grabbing; }
+  svg { width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
+  .region { fill: #1a1a2e; stroke: #2a2a4a; stroke-width: 0.8; transition: 0.3s; cursor: pointer; }
+  .region:hover { filter: brightness(1.4); }
+  .region.selected { stroke: #fff; stroke-width: 2; filter: brightness(1.6); }
+
+  /* --- UI ELEMENTS --- */
+  .hud-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+  .phase-banner { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border: 1px solid var(--gold); padding: 10px 40px; border-radius: 50px; font-family: 'Cinzel'; color: var(--gold); pointer-events: none; }
+  .chat { display: flex; flex-direction: column; height: 200px; }
+  .chat-msg { font-size: 0.9rem; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #000; padding: 10px 20px; border-radius: 4px; z-index: 2000; animation: slideUp 0.3s; }
+  @keyframes slideUp { from { transform: translate(-50%, 50px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+</style>
 </head>
 <body>
 
 <div id="lobby">
-    <div class="lobby-card">
-        <h1 style="font-family: 'Cinzel'; color: var(--gold);">STRATEGOS</h1>
-        <input id="playerName" placeholder="Ton nom de conquérant" maxlength="20">
-        <button class="btn" onclick="createRoom()">⚔️ Créer une partie</button>
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
-        <input id="roomCode" placeholder="CODE DE LA SALLE" maxlength="6">
-        <button class="btn" style="background: transparent; border: 1px solid var(--gold); color: var(--gold);" onclick="joinRoom()">Rejoindre</button>
+  <div class="card">
+    <h1 style="font-family: 'Cinzel'; color: var(--gold); font-size: 2.5rem; margin-bottom: 10px;">STRATEGOS</h1>
+    <p style="color: var(--text-dim); margin-bottom: 30px;">Dominez le monde, forgez l'histoire.</p>
+    <input type="text" id="playerName" placeholder="Nom du souverain" maxlength="15" style="width:100%; padding:12px; background:#000; border:1px solid var(--border); color:#fff; margin-bottom:15px; border-radius:4px;">
+    <button class="btn" onclick="createRoom()">Fonder un Empire</button>
+    <div style="margin: 20px 0; color: var(--text-dim); position: relative;">
+      <span style="background: var(--surface); padding: 0 10px; position: relative; z-index: 1;">OU</span>
+      <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid var(--border);"></div>
     </div>
+    <input type="text" id="roomCodeInput" placeholder="CODE DE LA SALLE" maxlength="6" style="width:100%; padding:12px; background:#000; border:1px solid var(--border); color:#fff; margin-bottom:10px; border-radius:4px; text-align:center; font-family:monospace; letter-spacing:2px;">
+    <button class="btn" style="background:transparent; border:1px solid var(--gold); color:var(--gold);" onclick="joinRoom()">Rejoindre une coalition</button>
+  </div>
 </div>
 
 <div id="waiting" style="display:none;">
-    <div class="waiting-card">
-        <h2 style="font-family: 'Cinzel'; color: var(--gold);">SALLE D'ATTENTE</h2>
-        <p>Code de la salle : <strong id="displayCode" style="color: #fff;">---</strong></p>
-        
-        <ul id="playerList">
-            </ul>
-
-        <button class="btn" id="startBtn" onclick="startGame()" disabled>
-            En attente de joueurs (0/2)
-        </button>
-        <p id="adminStatus" style="font-size: 0.8rem; color: #6e6a5e; margin-top: 10px; font-style: italic;">
-            Vous n'êtes pas le chef de la salle.
-        </p>
+  <div class="card">
+    <h2 style="font-family: 'Cinzel'; color: var(--gold); margin-bottom: 20px;">CONSEIL DE GUERRE</h2>
+    <div style="background: #000; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed var(--gold);">
+      <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Code de ralliement</p>
+      <p id="displayRoomCode" style="font-size: 2rem; font-family: monospace; letter-spacing: 5px; color: #fff; margin: 5px 0;">------</p>
     </div>
+    <div id="waitingPlayers" style="text-align: left; margin-bottom: 30px;">
+      </div>
+    <button class="btn" id="startBtn" onclick="startGame()" disabled>En attente de forces (0/2)</button>
+    <p id="adminNote" style="margin-top: 15px; font-size: 0.8rem; color: var(--text-dim);"></p>
+  </div>
 </div>
 
-<div id="game" style="display:none;">
-    <h2 style="color: var(--gold); text-align: center; padding: 20px;">LA BATAILLE COMMENCE !</h2>
+<div id="game">
+  <header>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <h2 style="font-family: 'Cinzel'; font-size: 1.2rem; color: var(--gold);">STRATEGOS</h2>
+      <div id="turnCounter" style="background: #000; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border); font-size: 0.9rem;">TOUR 1</div>
+    </div>
+    <div style="display: flex; gap: 30px;">
+      <div style="text-align: center;">
+        <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Trésorerie</p>
+        <p id="resGold" style="color: var(--gold); font-weight: bold;">0 G</p>
+      </div>
+      <div style="text-align: center;">
+        <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Recrues</p>
+        <p id="resManpower" style="color: #4ca6c9; font-weight: bold;">0 M</p>
+      </div>
+    </div>
+    <button class="btn" style="width: auto; margin: 0; padding: 8px 20px; font-size: 0.8rem;" onclick="nextPhase()">Fin de Phase</button>
+  </header>
+
+  <aside>
+    <div class="hud-card">
+      <h3 style="font-family: 'Cinzel'; font-size: 0.9rem; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px;">📊 PUISSANCES</h3>
+      <div id="playerStats"></div>
+    </div>
+    <div class="hud-card" style="flex-grow: 1; display: flex; flex-direction: column;">
+      <h3 style="font-family: 'Cinzel'; font-size: 0.9rem; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px;">💬 MESSAGES</h3>
+      <div id="chatBox" class="chat"></div>
+    </div>
+  </aside>
+
+  <main id="mapContainer">
+    <div id="phaseBanner" class="phase-banner">PHASE DE PRÉPARATION</div>
+    <svg id="worldMap" viewBox="0 0 1000 600"></svg>
+  </main>
+
+  <aside style="border-right: none; border-left: 1px solid var(--border);">
+    <div id="selectionInfo" class="hud-card">
+      <p style="text-align: center; color: var(--text-dim); font-style: italic;">Sélectionnez un territoire</p>
+    </div>
+    <div class="hud-card">
+      <h3 style="font-family: 'Cinzel'; font-size: 0.9rem; margin-bottom: 10px;">📜 ACTIONS</h3>
+      <button class="btn" id="btnRecruit" style="font-size: 0.8rem;" onclick="prepareRecruit()" disabled>Recruter</button>
+      <button class="btn" id="btnMove" style="font-size: 0.8rem; background: transparent; border: 1px solid var(--gold); color: var(--gold);" onclick="prepareMove()" disabled>Déplacer</button>
+    </div>
+  </aside>
 </div>
 
 <script>
+// ═══════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════
 let ws = null;
 let myId = null;
-let myName = '';
 let roomId = null;
-let isCreator = false;
 let gameState = null;
+let isCreator = false;
+let selectedRegionId = null;
+let currentAction = null; // 'recruit' or 'move'
 
-// CONNEXION AU SERVEUR (Render gère le protocole automatiquement)
+// ═══════════════════════════════════════════════
+//  NETWORKING
+// ═══════════════════════════════════════════════
 function connect(callback) {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${proto}//${location.host}`);
-    
-    ws.onopen = () => {
-        console.log("Connecté au serveur !");
-        callback();
-    };
-
-    ws.onmessage = (e) => {
-        const msg = JSON.parse(e.data);
-        handleMessage(msg);
-    };
-
-    ws.onerror = () => alert("Erreur de connexion !");
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}`);
+  ws.onopen = () => { console.log("Connected"); callback(); };
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+  ws.onclose = () => {
+    showToast("Connexion perdue. Tentative de reconexion...", "error");
+    setTimeout(() => location.reload(), 3000);
+  };
 }
 
 function send(data) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(data));
-    }
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
 }
 
-// ACTIONS BOUTONS
+function handleMessage(msg) {
+  switch(msg.type) {
+    case 'joined':
+      myId = msg.playerId;
+      roomId = msg.roomId;
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('waiting').style.display = 'flex';
+      document.getElementById('displayRoomCode').textContent = roomId;
+      break;
+    case 'state':
+      gameState = msg.state;
+      renderState();
+      break;
+    case 'error':
+      showToast(msg.message, 'error');
+      break;
+    case 'toast':
+      showToast(msg.message, msg.variant);
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  LOBBY LOGIC
+// ═══════════════════════════════════════════════
 function createRoom() {
-    myName = document.getElementById('playerName').value.trim() || 'Anonyme';
-    isCreator = true; // Je suis le créateur
-    connect(() => send({ type: 'join', name: myName }));
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) return showToast("Nom requis", "error");
+  isCreator = true; // IMPORTANT
+  connect(() => send({ type: 'join', name }));
 }
 
 function joinRoom() {
-    const code = document.getElementById('roomCode').value.trim().toUpperCase();
-    if (!code) return alert("Code requis");
-    myName = document.getElementById('playerName').value.trim() || 'Anonyme';
-    isCreator = false; // Je rejoins une salle existante
-    connect(() => send({ type: 'join', roomId: code, name: myName }));
+  const name = document.getElementById('playerName').value.trim();
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!name || !code) return showToast("Nom et code requis", "error");
+  isCreator = false; 
+  connect(() => send({ type: 'join', name, roomId: code }));
 }
 
 function startGame() {
-    send({ type: 'start' });
+  send({ type: 'start' });
 }
 
-// GESTION DES MESSAGES DU SERVEUR
-function handleMessage(msg) {
-    if (msg.type === 'joined') {
-        myId = msg.playerId;
-        roomId = msg.roomId;
-        document.getElementById('lobby').style.display = 'none';
-        document.getElementById('waiting').style.display = 'flex';
-        document.getElementById('displayCode').textContent = roomId;
-    }
+// ═══════════════════════════════════════════════
+//  RENDERING ENGINE
+// ═══════════════════════════════════════════════
+function renderState() {
+  if (!gameState) return;
 
-    if (msg.type === 'state') {
-        gameState = msg.state;
-        updateUI();
-    }
-}
-
-// MISE À JOUR DE L'INTERFACE
-function updateUI() {
-    if (!gameState) return;
-
-    // 1. Mise à jour de la liste des joueurs
-    const list = document.getElementById('playerList');
+  // -- PHASE LOBBY / ATTENTE --
+  if (gameState.phase === 'lobby') {
     const players = Object.values(gameState.players);
-    list.innerHTML = players.map(p => `<li>👤 ${p.name} ${p.id === myId ? '(Moi)' : ''}</li>`).join('');
-
-    // 2. Logique du bouton Start
-    const startBtn = document.getElementById('startBtn');
-    const adminStatus = document.getElementById('adminStatus');
     const count = players.length;
+    
+    document.getElementById('waitingPlayers').innerHTML = players.map(p => `
+      <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #222;">
+        <span>👤 ${p.name}</span>
+        <span style="color:var(--gold); font-size:0.8rem;">${p.id === myId ? 'VOUS' : 'PRÊT'}</span>
+      </div>
+    `).join('');
 
-    if (gameState.phase === 'lobby') {
-        if (isCreator) {
-            adminStatus.textContent = "Vous êtes le chef de la salle.";
-            if (count >= 2) {
-                startBtn.disabled = false;
-                startBtn.innerText = "⚔️ LANCER LA BATAILLE";
-                startBtn.style.background = "#c9a84c";
-            } else {
-                startBtn.disabled = true;
-                startBtn.innerText = `Attente de joueurs (${count}/2)`;
-            }
-        } else {
-            adminStatus.textContent = "En attente du chef de salle...";
-            startBtn.disabled = true;
-            startBtn.innerText = `Prêt ! (${count} joueurs connectés)`;
-        }
+    const startBtn = document.getElementById('startBtn');
+    const adminNote = document.getElementById('adminNote');
+
+    if (isCreator) {
+      adminNote.textContent = "Vous êtes le souverain de cette salle.";
+      if (count >= 2) {
+        startBtn.disabled = false;
+        startBtn.innerText = "⚔️ LANCER LA BATAILLE";
+      } else {
+        startBtn.disabled = true;
+        startBtn.innerText = `ATTENTE DE FORCES (${count}/2)`;
+      }
     } else {
-        // Si la phase n'est plus "lobby", on cache la salle d'attente
-        document.getElementById('waiting').style.display = 'none';
-        document.getElementById('game').style.display = 'block';
+      adminNote.textContent = "Seul le souverain peut sonner le cor de guerre.";
+      startBtn.disabled = true;
+      startBtn.innerText = `EN ATTENTE DU CHEF (${count}/2)`;
     }
+    return;
+  }
+
+  // -- PHASE JEU --
+  document.getElementById('waiting').style.display = 'none';
+  document.getElementById('game').style.display = 'grid';
+
+  // Update HUD
+  const me = gameState.players[myId];
+  if (me) {
+    document.getElementById('resGold').textContent = me.gold + " G";
+    document.getElementById('resManpower').textContent = me.manpower + " M";
+  }
+
+  document.getElementById('turnCounter').textContent = `TOUR ${gameState.turn}`;
+  document.getElementById('phaseBanner').textContent = `PHASE : ${gameState.phase.toUpperCase()}`;
+
+  renderPlayerStats();
+  renderMap();
+  updateSelectionPanel();
 }
+
+function renderPlayerStats() {
+  const container = document.getElementById('playerStats');
+  container.innerHTML = Object.values(gameState.players).map(p => `
+    <div style="margin-bottom:10px; padding:5px; border-left:3px solid ${p.color}">
+      <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
+        <span>${p.name}</span>
+        <span>${p.regions.length} Terr.</span>
+      </div>
+      <div style="height:4px; background:#000; margin-top:4px;">
+        <div style="height:100%; background:${p.color}; width:${Math.min(100, (p.manpower/20)*100)}%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMap() {
+  const svg = document.getElementById('worldMap');
+  // On ne vide pas tout pour éviter le clignotement
+  if (!svg.querySelector('.region')) {
+    svg.innerHTML = ''; // Initial clear
+    Object.values(gameState.world).forEach(reg => {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", reg.path);
+      path.setAttribute("class", "region");
+      path.setAttribute("id", "reg-" + reg.id);
+      path.onclick = () => selectRegion(reg.id);
+      svg.appendChild(path);
+    });
+  }
+
+  // Update colors and armies
+  Object.values(gameState.world).forEach(reg => {
+    const el = document.getElementById("reg-" + reg.id);
+    if (!el) return;
+    
+    const owner = gameState.players[reg.owner];
+    el.style.fill = owner ? owner.color : "#1a1a2e";
+    el.classList.toggle('selected', selectedRegionId === reg.id);
+
+    // Army Label
+    let label = document.getElementById("label-" + reg.id);
+    if (!label) {
+      label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("id", "label-" + reg.id);
+      label.setAttribute("pointer-events", "none");
+      label.setAttribute("font-family", "Cinzel");
+      label.setAttribute("font-weight", "bold");
+      label.setAttribute("font-size", "12");
+      label.setAttribute("fill", "#fff");
+      label.setAttribute("text-anchor", "middle");
+      svg.appendChild(label);
+    }
+    label.setAttribute("x", reg.center[0]);
+    label.setAttribute("y", reg.center[1]);
+    label.textContent = reg.army > 0 ? reg.army : "";
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  GAME ACTIONS
+// ═══════════════════════════════════════════════
+function selectRegion(id) {
+  if (currentAction === 'move' && selectedRegionId) {
+    // Si on a déjà une région et qu'on clique sur une autre en mode move
+    send({ type: 'move', from: selectedRegionId, to: id, amount: 1 });
+    cancelAction();
+    return;
+  }
+  selectedRegionId = id;
+  renderMap();
+  updateSelectionPanel();
+}
+
+function updateSelectionPanel() {
+  const panel = document.getElementById('selectionInfo');
+  const btnRecruit = document.getElementById('btnRecruit');
+  const btnMove = document.getElementById('btnMove');
+  
+  if (!selectedRegionId) {
+    panel.innerHTML = `<p style="text-align: center; color: var(--text-dim); font-style: italic;">Sélectionnez un territoire</p>`;
+    btnRecruit.disabled = true;
+    btnMove.disabled = true;
+    return;
+  }
+
+  const reg = gameState.world[selectedRegionId];
+  const owner = gameState.players[reg.owner];
+  const isMine = reg.owner === myId;
+
+  panel.innerHTML = `
+    <h4 style="color:var(--gold); font-family:'Cinzel';">${reg.name}</h4>
+    <p style="font-size:0.8rem; margin-top:5px;">Propriétaire : <span style="color:${owner?owner.color:'#fff'}">${owner?owner.name:'Personne'}</span></p>
+    <p style="font-size:1.2rem; font-weight:bold; margin-top:10px;">🛡️ ARMÉE : ${reg.army}</p>
+  `;
+
+  btnRecruit.disabled = !isMine || gameState.phase !== 'recrutement';
+  btnMove.disabled = !isMine || gameState.phase !== 'manœuvre' || reg.army < 2;
+}
+
+function prepareRecruit() {
+  if (!selectedRegionId) return;
+  send({ type: 'recruit', regionId: selectedRegionId, amount: 1 });
+}
+
+function prepareMove() {
+  currentAction = 'move';
+  showToast("Sélectionnez la destination", "info");
+}
+
+function cancelAction() {
+  currentAction = null;
+}
+
+function nextPhase() {
+  send({ type: 'next_phase' });
+  cancelAction();
+}
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(location.search);
+  const room = params.get('room');
+  if (room) document.getElementById('roomCodeInput').value = room;
+});
+
 </script>
 </body>
 </html>
