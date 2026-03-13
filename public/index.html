@@ -71,6 +71,7 @@
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #000; padding: 10px 20px; border-radius: 4px; z-index: 2000; animation: slideUp 0.3s; }
   @keyframes slideUp { from { transform: translate(-50%, 50px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 </style>
+<script src="territories-data.js"></script>
 </head>
 <body>
 
@@ -298,44 +299,53 @@ function renderPlayerStats() {
 
 function renderMap() {
   const svg = document.getElementById('worldMap');
-  // On ne vide pas tout pour éviter le clignotement
+  
+  // 1. On vérifie si les données existent
+  if (!gameState || !gameState.territories) return;
+
+  // 2. On dessine les pays (si ce n'est pas déjà fait)
   if (!svg.querySelector('.region')) {
-    svg.innerHTML = ''; // Initial clear
-    Object.values(gameState.world).forEach(reg => {
+    svg.innerHTML = ''; 
+    Object.keys(gameState.territories).forEach(tid => {
+      // NOTE IMPORTANTE : On utilise TERRITORIES (le fichier de données) 
+      // pour le tracé SVG (path) et le nom.
+      const data = TERRITORIES[tid]; 
+      if (!data) return;
+
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", reg.path);
+      path.setAttribute("d", data.path); // Le tracé du pays
       path.setAttribute("class", "region");
-      path.setAttribute("id", "reg-" + reg.id);
-      path.onclick = () => selectRegion(reg.id);
+      path.setAttribute("id", "reg-" + tid);
+      path.onclick = () => selectRegion(tid);
       svg.appendChild(path);
     });
   }
 
-  // Update colors and armies
-  Object.values(gameState.world).forEach(reg => {
-    const el = document.getElementById("reg-" + reg.id);
+  // 3. On met à jour les couleurs et les troupes
+  Object.keys(gameState.territories).forEach(tid => {
+    const el = document.getElementById("reg-" + tid);
     if (!el) return;
     
-    const owner = gameState.players[reg.owner];
+    const regState = gameState.territories[tid];
+    const owner = gameState.players[regState.owner];
+    
     el.style.fill = owner ? owner.color : "#1a1a2e";
-    el.classList.toggle('selected', selectedRegionId === reg.id);
+    el.classList.toggle('selected', selectedRegionId === tid);
 
-    // Army Label
-    let label = document.getElementById("label-" + reg.id);
+    // Mise à jour du texte des armées
+    let label = document.getElementById("label-" + tid);
     if (!label) {
       label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.setAttribute("id", "label-" + reg.id);
+      label.setAttribute("id", "label-" + tid);
       label.setAttribute("pointer-events", "none");
-      label.setAttribute("font-family", "Cinzel");
-      label.setAttribute("font-weight", "bold");
-      label.setAttribute("font-size", "12");
       label.setAttribute("fill", "#fff");
       label.setAttribute("text-anchor", "middle");
       svg.appendChild(label);
     }
-    label.setAttribute("x", reg.center[0]);
-    label.setAttribute("y", reg.center[1]);
-    label.textContent = reg.army > 0 ? reg.army : "";
+    const data = TERRITORIES[tid];
+    label.setAttribute("x", data.center[0]);
+    label.setAttribute("y", data.center[1]);
+    label.textContent = regState.soldiers > 0 ? regState.soldiers : "";
   });
 }
 
