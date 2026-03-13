@@ -307,21 +307,17 @@ function renderPlayerStats() {
 
 function renderMap() {
   const svg = document.getElementById('worldMap');
-  
-  // 1. On vérifie si les données existent
-  if (!gameState || !gameState.territories) return;
+  if (!gameState || !gameState.territories || !window.TERRITORIES) return;
 
-  // 2. On dessine les pays (si ce n'est pas déjà fait)
+  // 1. Création des tracés (Paths)
   if (!svg.querySelector('.region')) {
     svg.innerHTML = ''; 
     Object.keys(gameState.territories).forEach(tid => {
-      // NOTE IMPORTANTE : On utilise TERRITORIES (le fichier de données) 
-      // pour le tracé SVG (path) et le nom.
-      const data = TERRITORIES[tid]; 
-      if (!data) return;
+      const data = window.TERRITORIES[tid]; 
+      if (!data || !data.path) return; // Sécurité si path manquant
 
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", data.path); // Le tracé du pays
+      path.setAttribute("d", data.path);
       path.setAttribute("class", "region");
       path.setAttribute("id", "reg-" + tid);
       path.onclick = () => selectRegion(tid);
@@ -329,7 +325,7 @@ function renderMap() {
     });
   }
 
-  // 3. On met à jour les couleurs et les troupes
+  // 2. Mise à jour des couleurs et des chiffres
   Object.keys(gameState.territories).forEach(tid => {
     const el = document.getElementById("reg-" + tid);
     if (!el) return;
@@ -340,20 +336,23 @@ function renderMap() {
     el.style.fill = owner ? owner.color : "#1a1a2e";
     el.classList.toggle('selected', selectedRegionId === tid);
 
-    // Mise à jour du texte des armées
-    let label = document.getElementById("label-" + tid);
-    if (!label) {
-      label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.setAttribute("id", "label-" + tid);
-      label.setAttribute("pointer-events", "none");
-      label.setAttribute("fill", "#fff");
-      label.setAttribute("text-anchor", "middle");
-      svg.appendChild(label);
+    // Sécurité pour le texte (le fameux data.center)
+    const data = window.TERRITORIES[tid];
+    if (data && data.center && data.center.length >= 2) {
+      let label = document.getElementById("label-" + tid);
+      if (!label) {
+        label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("id", "label-" + tid);
+        label.setAttribute("pointer-events", "none");
+        label.setAttribute("fill", "#fff");
+        label.setAttribute("font-weight", "bold");
+        label.setAttribute("text-anchor", "middle");
+        svg.appendChild(label);
+      }
+      label.setAttribute("x", data.center[0]);
+      label.setAttribute("y", data.center[1]);
+      label.textContent = regState.soldiers > 0 ? regState.soldiers : "";
     }
-    const data = TERRITORIES[tid];
-    label.setAttribute("x", data.center[0]);
-    label.setAttribute("y", data.center[1]);
-    label.textContent = regState.soldiers > 0 ? regState.soldiers : "";
   });
 }
 
