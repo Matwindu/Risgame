@@ -135,9 +135,12 @@
   </aside>
 
   <main id="mapContainer">
-    <div id="phaseBanner" class="phase-banner">PHASE DE PRÉPARATION</div>
-    <svg id="worldMap" viewBox="0 0 1000 600"></svg>
-  </main>
+  <div id="phaseBanner" class="phase-banner">PHASE DE PRÉPARATION</div>
+  
+  <svg id="worldMap" viewBox="0 0 1000 424" preserveAspectRatio="xMidYMid meet">
+    </svg>
+  
+</main>
 
   <aside style="border-right: none; border-left: 1px solid var(--border);">
     <div id="selectionInfo" class="hud-card">
@@ -307,28 +310,26 @@ function renderPlayerStats() {
 
 function renderMap() {
   const svg = document.getElementById('worldMap');
+  // On vérifie que les données sont chargées
   if (!gameState || !gameState.territories || !window.TERRITORIES) return;
 
-  // Création des tracés SVG (s'ils n'existent pas)
+  // 1. Création des formes (si elles n'existent pas encore)
   if (!svg.querySelector('.region')) {
     svg.innerHTML = ''; 
     Object.keys(window.TERRITORIES).forEach(tid => {
       const data = window.TERRITORIES[tid];
-      if (!data || !data.path) return;
+      if (!data.path) return; // Sécurité si le path est manquant
 
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", data.path);
+      path.setAttribute("d", data.path); // Dessine la forme réelle du pays
       path.setAttribute("class", "region");
       path.setAttribute("id", "reg-" + tid);
-      // Style par défaut pour les territoires non occupés
-      path.setAttribute("fill", "#1a1a2e"); 
-      path.setAttribute("stroke", "#444");
       path.onclick = () => selectRegion(tid);
       svg.appendChild(path);
     });
   }
 
-  // Mise à jour dynamique (Couleurs et Troupes)
+  // 2. Mise à jour visuelle (Couleurs des joueurs et Troupes)
   Object.keys(gameState.territories).forEach(tid => {
     const el = document.getElementById("reg-" + tid);
     const data = window.TERRITORIES[tid];
@@ -337,30 +338,26 @@ function renderMap() {
     const regState = gameState.territories[tid];
     const owner = gameState.players[regState.owner];
 
-    // Couleur du propriétaire
+    // Change la couleur selon le propriétaire actuel
     el.style.fill = owner ? owner.color : "#1a1a2e";
     el.classList.toggle('selected', selectedRegionId === tid);
 
-    // Affichage des chiffres (labels)
-    if (data.x !== undefined && data.y !== undefined) {
-      let label = document.getElementById("label-" + tid);
-      if (!label) {
-        label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        label.setAttribute("id", "label-" + tid);
-        label.setAttribute("fill", "#fff");
-        label.setAttribute("text-anchor", "middle");
-        label.setAttribute("font-size", "14px"); // Un peu plus grand pour lisibilité
-        label.setAttribute("font-weight", "bold");
-        label.setAttribute("pointer-events", "none");
-        svg.appendChild(label);
-      }
-      // On utilise directement x et y sans multiplication
-      label.setAttribute("x", data.x);
-      label.setAttribute("y", data.y);
-      label.textContent = regState.soldiers > 0 ? regState.soldiers : "";
+    // Gère le texte affichant le nombre de soldats
+    let label = document.getElementById("label-" + tid);
+    if (!label) {
+      label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("id", "label-" + tid);
+      label.setAttribute("fill", "#fff");
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("font-size", "12px");
+      label.setAttribute("font-weight", "bold");
+      label.setAttribute("pointer-events", "none");
+      svg.appendChild(label);
     }
+    label.setAttribute("x", data.x);
+    label.setAttribute("y", data.y);
+    label.textContent = regState.soldiers > 0 ? regState.soldiers : "";
   });
-}
 
 // ═══════════════════════════════════════════════
 //  GAME ACTIONS
