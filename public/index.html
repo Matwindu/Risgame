@@ -284,17 +284,25 @@ function renderState() {
 
 function renderPlayerStats() {
   const container = document.getElementById('playerStats');
-  container.innerHTML = Object.values(gameState.players).map(p => `
-    <div style="margin-bottom:10px; padding:5px; border-left:3px solid ${p.color}">
-      <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
-        <span>${p.name}</span>
-        <span>${p.regions.length} Terr.</span>
+  if (!gameState || !gameState.players) return;
+
+  container.innerHTML = Object.values(gameState.players).map(p => {
+    // Correction ici : on calcule le nombre de territoires possédés 
+    // en filtrant la liste globale des territoires.
+    const territoryCount = Object.values(gameState.territories).filter(t => t.owner === p.id).length;
+    
+    return `
+      <div style="margin-bottom:10px; padding:5px; border-left:3px solid ${p.color}">
+        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
+          <span>${p.name}</span>
+          <span>${territoryCount} Terr.</span>
+        </div>
+        <div style="height:4px; background:#000; margin-top:4px;">
+          <div style="height:100%; background:${p.color}; width:${Math.min(100, (p.gold/20)*100)}%"></div>
+        </div>
       </div>
-      <div style="height:4px; background:#000; margin-top:4px;">
-        <div style="height:100%; background:${p.color}; width:${Math.min(100, (p.manpower/20)*100)}%"></div>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function renderMap() {
